@@ -1,0 +1,89 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__figma__get_design_context",
+      "mcp__figma__get_metadata",
+      "mcp__figma__get_screenshot",
+      "mcp__figma__get_variable_defs",
+      "mcp__figma__get_code_connect_map",
+      "mcp__figma__whoami",
+      "Bash(git fetch origin *)",
+      "Bash(git fetch origin)",
+      "Bash(git switch *)",
+      "Bash(git worktree add *)",
+      "Bash(git worktree remove *)",
+      "Bash(git worktree prune)",
+      "Bash(git worktree list)",
+      "Bash(git worktree list *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git merge origin/*)",
+      "Bash(git push origin HEAD)",
+      "Bash(git push --set-upstream origin HEAD)",
+      "Bash(git tag -a v*)",
+      "Bash(git push origin refs/tags/v*)",
+      "Bash(git ls-remote *)",
+      "Bash(git revert *)",
+      "Bash(docker info *)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Bash(git show *)",
+      "Bash(git rev-parse *)",
+      "Bash(git symbolic-ref *)",
+      "Bash(git branch *)",
+      "Bash(git merge-base *)",
+      "Bash(git ls-files *)",
+      "Bash(node --test *)",
+      "Bash(node .claude/scripts/flow-config.mjs *)",
+      "Bash(node .claude/scripts/check-version.mjs *)",
+      "Bash(node .claude/scripts/delivery-queue.mjs *)",
+      "Bash(node .claude/scripts/fire-check.mjs *)",
+      "Bash(sh .claude/scripts/delivery-preflight.sh)",
+      "Bash(sh .claude/scripts/delivery-preflight.sh *)",
+      "Bash(sh .claude/scripts/tree-fingerprint.sh *)",
+      "Bash(sh .claude/scripts/export-origin-main.sh *)",
+      "Bash(sh .claude/scripts/review-artifact.sh *)",
+      "Bash(sh .claude/scripts/outside-review.sh *)",
+      "Bash(gh auth status)",
+      "Bash(gh pr view *)",
+      "Bash(gh pr list *)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr edit *)",
+      "Bash(gh pr ready *)",
+      "Bash(gh pr comment *)",
+      "Bash(gh pr diff *)",
+      "Bash(gh pr checks *)",
+      "Bash(gh run list *)",
+      "Bash(gh run view *)",
+      "Bash(gh run watch *)",
+      "Bash(gh issue list *)",
+      "Bash(gh issue view *)",
+      "Bash(gh issue create *)",
+      "Bash(gh issue comment *)",
+      "Bash(gh issue edit *)",
+      "Bash(gh issue close *)",
+      "Bash(gh label list *)",
+      "Bash(gh api --method GET repos/*)",
+      "Bash(curl -sS http://localhost:*)",
+      "Bash(curl -sS * http://localhost:*)",
+      "Bash(date *)",
+      "Bash(sleep *)",
+      "Bash(ps -o pid,ppid,command)",
+      "Bash(ps -o pid,ppid,command *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/scripts/guard-bash.mjs\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,63 @@
+# Checks of every pull request, and the validation the main workflow reuses.
+# Job names `flow` and `project` are the required checks of the main-branch
+# ruleset /flow-init creates; keep them.
+name: ci
+
+on:
+  pull_request:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  flow:
+    name: flow
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Flow configuration reads
+        run: node .claude/scripts/flow-config.mjs project
+      - name: Flow scripts' tests
+        run: node --test .claude/tests/*.test.mjs
+      - name: Version rule
+        if: github.event_name == 'pull_request'
+        run: node .claude/scripts/check-version.mjs "origin/${{ github.base_ref }}"
+
+  project:
+    name: project
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # The scaffold task adds the stack's own setup here (language runtime,
+      # package cache, services such as a database).
+      - name: Project commands from .claude/flow.json
+        run: |
+          ran=0
+          for name in install check test build e2e; do
+            cmd="$(node .claude/scripts/flow-config.mjs "commands.$name")"
+            if [ -z "$cmd" ]; then
+              echo "::notice::commands.$name is empty in .claude/flow.json, skipped"
+              continue
+            fi
+            echo "::group::$name: $cmd"
+            bash -euo pipefail -c "$cmd"
+            echo "::endgroup::"
+            ran=$((ran + 1))
+          done
+          echo "ran $ran project command(s)"

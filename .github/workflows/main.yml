@@ -1,0 +1,73 @@
+# The run for every commit on main: validate, then — when `delivery.deploy` is
+# true in .claude/flow.json — deploy and smoke. The delivery cycle follows this
+# workflow (`delivery.mainWorkflow`) for the merge commit and reads its smoke
+# job by `delivery.smokeJob`; rename both together.
+name: main
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    uses: ./.github/workflows/ci.yml
+
+  config:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      deploy: ${{ steps.read.outputs.deploy }}
+      site: ${{ steps.read.outputs.site }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: read
+        run: |
+          echo "deploy=$(node .claude/scripts/flow-config.mjs delivery.deploy)" >> "$GITHUB_OUTPUT"
+          echo "site=$(node .claude/scripts/flow-config.mjs project.site)" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: [validate, config]
+    if: needs.config.outputs.deploy == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # One deployment at a time; a newer one waits, none is cancelled.
+    concurrency:
+      group: production
+      cancel-in-progress: false
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      # The deployment task replaces this step with the project's deployment
+      # (build and push an image, apply it, wait until it serves). Secrets come
+      # from the `production` environment, never from the repository.
+      - name: Deploy
+        run: |
+          echo "::error::delivery.deploy is true but this workflow has no deployment step yet"
+          exit 1
+
+  smoke:
+    needs: [deploy, config]
+    if: needs.config.outputs.deploy == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: The site answers
+        env:
+          SITE: ${{ needs.config.outputs.site }}
+        run: |
+          if [ -z "$SITE" ]; then
+            echo "::error::project.site is empty in .claude/flow.json"
+            exit 1
+          fi
+          for attempt in 1 2 3 4 5 6; do
+            code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "$SITE" || true)"
+            echo "attempt $attempt: HTTP $code"
+            case "$code" in 2??|3??) exit 0 ;; esac
+            sleep 10
+          done
+          echo "::error::$SITE did not answer 2xx/3xx"
+          exit 1

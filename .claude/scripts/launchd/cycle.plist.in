@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  The delivery cycle's scheduled fire (D17), rendered by install.sh into
+  ~/Library/LaunchAgents/dev.agent-flow.<repo-name>.cycle.plist with its label,
+  the checkout, the logs directory ~/Library/Logs/agent-flow/<repo-name> and
+  one calendar interval per minute of schedule.cycle in .claude/flow.json
+  filled in, local time: the cron of .claude/scheduled/delivery-cycle.md. The fire
+  checks for work and starts a session only when there is some; the session
+  outlives the job, which ends within seconds, so its process group is
+  abandoned rather than killed.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>@LABEL@</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>@CHECKOUT@/.claude/scripts/scheduled-fire.sh</string>
+    <string>cycle</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>@CHECKOUT@</string>
+  <key>StartCalendarInterval</key>
+  <array>
+@CALENDAR@
+  </array>
+  <key>AbandonProcessGroup</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>@LOGS@/launchd-cycle.log</string>
+  <key>StandardErrorPath</key>
+  <string>@LOGS@/launchd-cycle.log</string>
+</dict>
+</plist>

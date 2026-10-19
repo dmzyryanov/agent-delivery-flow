@@ -1,0 +1,155 @@
+{
+  "about": "The areas a task touches, for the delivery cycle's pick (.claude/scheduled/delivery-cycle.md, D16). An issue names its areas in a `## Touches` section, from the names below; grooming writes it. A branch's changed files map onto areas by the globs: `*` is any run of characters inside one path segment, `**` any number of whole segments, zero included. A file counts in every hard area a glob of which matches it, and in the ordinary areas whose matching glob is the most specific, the one with the most characters that are not `*`; a file no glob matches counts in `other`. The bookkeeping files count in no area: every task changes them, and they are set under the delivery lock. A branch with a file in an area marked `critical` gets the full Tester and Reviewer pass once more on the SHA that is to merge (`docs/DELIVERY.md` step 4, D19); the flag is the one list of those areas. The hard areas below are generic and stay; the ordinary ones are placeholders that `/flow-init` replaces with the project's own areas and globs, marking `critical` the ones the first of CLAUDE.md's Development priorities depends on. `outsideReview.areas` in `.claude/flow.json` names areas from this file.",
+  "bookkeeping": ["VERSION", "CHANGELOG.md", "docs/DECISIONS.md"],
+  "areas": [
+    {
+      "name": "migrations",
+      "hard": true,
+      "critical": true,
+      "about": "database migrations and schema changes",
+      "paths": [
+        "**/migrations/**",
+        "**/migrate/**",
+        "**/alembic/**",
+        "**/prisma/schema.prisma",
+        "**/schema.sql"
+      ]
+    },
+    {
+      "name": "api-contract",
+      "hard": true,
+      "critical": false,
+      "about": "the API contract and the shared types: API descriptions, schemas, generated clients' sources, docs/API.md",
+      "paths": [
+        "**/openapi.json",
+        "**/openapi.yaml",
+        "**/openapi.yml",
+        "**/*.proto",
+        "**/schema.graphql",
+        "**/schema.graphqls",
+        "packages/shared/**",
+        "docs/API.md"
+      ]
+    },
+    {
+      "name": "dependencies",
+      "hard": true,
+      "critical": false,
+      "about": "package manifests, lockfiles and toolchain pins",
+      "paths": [
+        "**/package.json",
+        "**/package-lock.json",
+        "**/npm-shrinkwrap.json",
+        "**/pnpm-lock.yaml",
+        "pnpm-workspace.yaml",
+        "**/yarn.lock",
+        ".yarnrc.yml",
+        ".npmrc",
+        ".nvmrc",
+        ".node-version",
+        "**/requirements*.txt",
+        "**/pyproject.toml",
+        "**/poetry.lock",
+        "**/uv.lock",
+        "**/Pipfile",
+        "**/Pipfile.lock",
+        "**/setup.py",
+        "**/setup.cfg",
+        ".python-version",
+        "**/go.mod",
+        "**/go.sum",
+        "go.work",
+        "go.work.sum",
+        "**/Cargo.toml",
+        "**/Cargo.lock",
+        "rust-toolchain.toml",
+        "**/Gemfile",
+        "**/Gemfile.lock",
+        ".ruby-version",
+        "**/composer.json",
+        "**/composer.lock",
+        "**/pom.xml",
+        "**/build.gradle",
+        "**/build.gradle.kts",
+        "**/gradle.lockfile",
+        ".tool-versions"
+      ]
+    },
+    {
+      "name": "ci-deploy",
+      "hard": true,
+      "critical": false,
+      "about": "CI and deployment: the GitHub Actions workflows and actions, deploy/, the images and their compose files, infrastructure as code",
+      "paths": [
+        ".github/workflows/**",
+        ".github/actions/**",
+        "deploy/**",
+        "infra/**",
+        "**/Dockerfile",
+        "**/Dockerfile.*",
+        "**/*.Dockerfile",
+        "**/.dockerignore",
+        "docker-compose*.yml",
+        "docker-compose*.yaml",
+        "compose*.yml",
+        "compose*.yaml",
+        "**/*.tf",
+        "**/*.tfvars",
+        "Procfile",
+        "fly.toml",
+        "render.yaml",
+        "vercel.json",
+        "netlify.toml"
+      ]
+    },
+    {
+      "name": "delivery-process",
+      "hard": true,
+      "critical": false,
+      "about": "the delivery process: .claude/, CLAUDE.md, docs/DELIVERY.md and the scripts, tests and templates it runs on",
+      "paths": [
+        ".claude/**",
+        "CLAUDE.md",
+        "docs/DELIVERY.md",
+        "docs/tooling/**",
+        ".github/ISSUE_TEMPLATE/**",
+        ".github/pull_request_template.md",
+        ".mcp.json"
+      ]
+    },
+    {
+      "name": "frontend",
+      "hard": false,
+      "critical": false,
+      "about": "placeholder: the frontend — the user interface, its components, styles and assets",
+      "paths": [
+        "frontend/**",
+        "web/**",
+        "client/**",
+        "apps/frontend/**",
+        "apps/web/**",
+        "public/**"
+      ]
+    },
+    {
+      "name": "backend",
+      "hard": false,
+      "critical": false,
+      "about": "placeholder: the backend — the server, its business logic, the database access",
+      "paths": [
+        "backend/**",
+        "server/**",
+        "apps/backend/**",
+        "apps/server/**",
+        "apps/api/**"
+      ]
+    },
+    {
+      "name": "docs",
+      "hard": false,
+      "critical": false,
+      "about": "documentation",
+      "paths": ["docs/**", "README.md"]
+    }
+  ]
+}

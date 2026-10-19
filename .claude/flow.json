@@ -1,0 +1,43 @@
+{
+  "about": "The project's configuration of the delivery flow (D23). `/flow-init` fills it; scripts read it through `.claude/scripts/flow-config.mjs`, and the procedures name its values as `commands.check` and so on. An empty string means the project has none of that thing.",
+  "project": {
+    "name": "",
+    "repo": "",
+    "mainBranch": "main",
+    "site": "",
+    "ownerLanguage": "Russian"
+  },
+  "commands": {
+    "about": "Shell commands run from the repository root. `taskTest` and `taskDown` contain `{task}`: the test suite on the task's own resources (its own database, its own ports) and their removal, so tasks developed side by side never share state. `taskTest` empty means `test`.",
+    "install": "",
+    "check": "",
+    "test": "",
+    "taskTest": "",
+    "taskDown": "",
+    "e2e": "",
+    "build": ""
+  },
+  "delivery": {
+    "about": "`versioning`: VERSION and CHANGELOG.md are bumped and the merge commit tagged. `deploy`: the main workflow deploys and its smoke job checks the site. `rollback`: a command the Coordinator may run once to restore the last verified deployment; empty means recovery is a revert pull request.",
+    "versioning": true,
+    "deploy": false,
+    "mainWorkflow": "main.yml",
+    "smokeJob": "smoke",
+    "rollback": ""
+  },
+  "outsideReview": {
+    "about": "Outside review by OpenAI's Codex CLI under the owner's account (D12): off unless enabled, and then only for branches touching one of these areas of `.claude/delivery-areas.json`.",
+    "enabled": false,
+    "areas": []
+  },
+  "design": {
+    "about": "`figma`: new screens get two or three Figma directions the owner picks from before implementation.",
+    "figma": false
+  },
+  "schedule": {
+    "about": "Cron expressions of the two scheduled tasks `/flow-init` creates, and the grooming fire that sends the owner the morning notification.",
+    "cycle": "*/30 * * * *",
+    "grooming": "7,22,37,52 * * * *",
+    "morningFire": "09:07"
+  }
+}
