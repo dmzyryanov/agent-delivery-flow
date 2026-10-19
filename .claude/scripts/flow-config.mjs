@@ -106,7 +106,7 @@ export function taskCommand(flow, name, task) {
 }
 
 function main(argv) {
-  if (argv.length !== 1 || !/^[A-Za-z]+(?:\.[A-Za-z]+)*$/.test(argv[0])) {
+  if (argv.length !== 1 || !/^[A-Za-z][A-Za-z0-9]*(?:\.[A-Za-z][A-Za-z0-9]*)*$/.test(argv[0])) {
     process.stderr.write('usage: node .claude/scripts/flow-config.mjs <dotted.key>\n');
     return 2;
   }

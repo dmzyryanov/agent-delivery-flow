@@ -88,6 +88,7 @@ test('run as a script it prints one value and exits 0, 1 or 2', (t) => {
     });
   assert.deepEqual([run('project.repo').status, run('project.repo').stdout], [0, 'o/r\n']);
   assert.equal(run('delivery.deploy').stdout, 'false\n');
+  assert.deepEqual([run('commands.e2e').status, run('commands.e2e').stdout], [0, '\n']);
   assert.equal(run('schedule').stdout, `${JSON.stringify(loadFlowDefaultsSchedule())}\n`);
   assert.equal(run('project.nothing').status, 2);
   assert.equal(run().status, 2);
