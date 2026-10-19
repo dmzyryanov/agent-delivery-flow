@@ -10,7 +10,7 @@ const SCRIPT = new URL('../scripts/check-version.mjs', import.meta.url).pathname
 
 test('runtime paths are everything but docs, tests and delivery tooling', () => {
   for (const path of ['README.md', 'docs/x.png', '.claude/scripts/a.mjs', '.github/workflows/ci.yml',
-    'VERSION', 'CHANGELOG.md', 'src/a.test.ts', 'web/b.spec.js', 'tests/x.py', 'pkg/test/y.go',
+    'VERSION', 'CHANGELOG.md', '.mcp.json', 'src/a.test.ts', 'web/b.spec.js', 'tests/x.py', 'pkg/test/y.go',
     'e2e/run.ts', 'src/__tests__/z.js']) {
     assert.equal(isRuntimePath(path), false, path);
   }

@@ -38,12 +38,16 @@ jobs:
     concurrency:
       group: production
       cancel-in-progress: false
-    environment: production
+    # Where the plan has environments (public repositories, or private ones
+    # on Pro, Team or Enterprise), the deployment task may add
+    # `environment: production` here and keep its secrets there; otherwise
+    # they are repository secrets (Settings → Secrets and variables → Actions).
     steps:
       - uses: actions/checkout@v4
       # The deployment task replaces this step with the project's deployment
       # (build and push an image, apply it, wait until it serves). Secrets come
-      # from the `production` environment, never from the repository.
+      # from GitHub's secret store as `${{ secrets.NAME }}`, never from files in
+      # the repository.
       - name: Deploy
         run: |
           echo "::error::delivery.deploy is true but this workflow has no deployment step yet"

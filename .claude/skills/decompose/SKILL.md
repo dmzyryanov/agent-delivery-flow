@@ -55,8 +55,11 @@ In order:
    stack's skeleton, a hello-world that builds and tests, the project's
    commands written into `.claude/flow.json` (`install`, `check`, `test`,
    `build`, and `taskTest`/`taskDown` with `{task}` when suites need a
-   database or ports), the CI job `project` running them, and
-   `docs/ARCHITECTURE.md`'s first version. `type:chore`, areas `dependencies`,
+   database or ports) together with their allow rules in
+   `.claude/settings.json` (`Bash(<command>)` and `Bash(<command> *)`, `{task}`
+   as `*` — without them unattended runs cannot run the commands, and
+   `flow-consistency.test.mjs` fails), the CI job `project` running them,
+   and `docs/ARCHITECTURE.md`'s first version. `type:chore`, areas `dependencies`,
    `ci-deploy`, `delivery-process`. Every other child depends on it.
 2. **Deployment** (when the goal includes a running service and
    `delivery.deploy` is false): the main workflow's `deploy` and smoke jobs,
@@ -113,7 +116,8 @@ says to file it.
    in the same parallel batch as the Write of that file.
 
 Check afterwards with `gh issue view <epic> --repo R --json body` that every
-child is listed and with `gh issue list --repo R --search "Epic: #<epic>" --json number`
+child is listed and with `gh issue list --repo R --state all --search '"Epic: #<epic>" in:body' --json number,body`
+(keeping only issues whose body has the exact line)
 that none is missing.
 
 ## 6. After filing

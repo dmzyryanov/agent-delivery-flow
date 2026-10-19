@@ -608,7 +608,13 @@ the first printing the bound in seconds, the second the bound to compare with.
 - the open issues waiting for the owner:
   `gh issue list --repo <R> --state open --label state:needs-owner --limit 200 --json number --jq '.[].number'`.
 
-In Russian, the default:
+Written in the owner's language; in English:
+
+```text
+Grooming, morning: ready on their own in the last day — 2 (#57, #61); waiting for you — 3 (#12, #30, #44). Review: /groom.
+```
+
+and in Russian, for example:
 
 ```text
 Груминг, утро: сами стали ready за сутки — 2 (#57, #61); ждут тебя — 3 (#12, #30, #44). Разбор: /groom.
@@ -629,23 +635,23 @@ run did, before the line End of run gives.
 
 ## End of run
 
-The final chat message, in `project.ownerLanguage`, one or two lines; in
-Russian, the default:
+The final chat message, one or two lines, written in the owner's language,
+`project.ownerLanguage`; in English:
 
 ```text
-Груминг 03:22 — #57 стала ready сама: <что за задача, несколько слов>.
+Grooming 03:22 — #57 became ready on its own: <what the task is, in a few words>.
 ```
 
 ```text
-Груминг 03:22 — #57 ждёт тебя: 2 вопроса и 3 направления дизайна, разбор в /groom.
+Grooming 03:22 — #57 waits for you: 2 questions and 3 design directions, review in /groom.
 ```
 
-When a stop condition held, it names it: `Груминг 10:22 — GitHub недоступен,
-ничего не делал.`, `Груминг 10:37 — ещё идёт груминг #57 (с 10:22), ничего не
-делал.`, `Груминг 10:52 — тебя ждут 12 задач, новых не беру.` or
-`Груминг 10:52 — задач для груминга нет.` A fault the run found — an issue
-with two `state:` or two `prio:` labels, a label command that failed twice —
-is named after it: `Сбой: у #41 две метки state:.`
+When a stop condition held, it names it: `Grooming 10:22 — GitHub is
+unreachable, did nothing.`, `Grooming 10:37 — grooming of #57 still running
+(since 10:22), did nothing.`, `Grooming 10:52 — 12 issues wait for you, taking
+no new one.` or `Grooming 10:52 — nothing to groom.` A fault the run found —
+an issue with two `state:` or two `prio:` labels, a label command that failed
+twice — is named after it: `Fault: #41 has two state: labels.`
 
 On the morning fire the message opens with the morning notification's line
 (Morning notification).

@@ -116,9 +116,12 @@ D16 in `docs/DECISIONS.md`.
 here**, not a question: missing material product intent, a scope expansion, a
 new paid service, a material security or privacy change, unavailable
 credentials, a destructive data operation, a breaking change to a part
-`docs/ARCHITECTURE.md` declares stable under `Stable parts` without the notice
-`docs/DELIVERY.md` requires, or a technical blocker that cannot be resolved
-with existing authority. Record it on the issue and end the task.
+`docs/ARCHITECTURE.md` lists under `Stable parts` — which needs the owner's
+approval, recorded in the pull request, and a run has nobody to give it, so
+the task ends BLOCKED with the pull request, still draft, where an attended
+session would ask the owner (`docs/DELIVERY.md`, Decisions and
+compatibility) — or a technical blocker that cannot be resolved with existing
+authority. Record it on the issue and end the task.
 
 ## The queue
 
@@ -168,12 +171,14 @@ neither does the one holding the lock: the lock is a place of its own. A fire
 takes a new issue only while fewer tasks hold a slot than the slot limit, 3
 unless `node .claude/scripts/delivery-queue.mjs set slots <n>` has changed it.
 Attended sessions, the owner in the chat, register their tasks in the same
-queue with `start <n> --day`, or `start day-<word> --day --areas <areas>` for
-one without an issue: they count toward the limit when a fire picks, but an
-attended session is never refused. A task that comes back to work — from the
-lock, from a pause or from waiting for the lock — takes its slot back even
-over the limit, and new starts wait until fewer tasks hold a slot than the
-limit; `status` then reads `4 of 3 slots in use` and says why.
+queue with
+`node .claude/scripts/delivery-queue.mjs start <n> --session <id> --branch <branch> --worktree <path> --base <BASE_SHA> --day`,
+or, for one without an issue, the same with `day-<word>` in place of `<n>`
+and `--areas <a,b>` added: they count toward the limit when a fire picks,
+but an attended session is never refused. A task that comes back to work —
+from the lock, from a pause or from waiting for the lock — takes its slot
+back even over the limit, and new starts wait until fewer tasks hold a slot
+than the limit; `status` then reads `4 of 3 slots in use` and says why.
 
 **Liveness.** The app's run status is no sign of life: a run that waits between
 turns for its sub-agents reads `succeeded` while it is alive. A session is
@@ -303,14 +308,17 @@ GitHub: it never opens a second pull request for a branch, never merges one
 that is already merged, and never creates a tag that exists. Concretely:
 
 - its pull request:
-  `gh pr list --repo <repo> --head <branch> --state all --json number,state,isDraft,headRefOid,url`
+  `gh pr list --repo <repo> --head <branch> --state all --json number,state,isDraft,title,headRefOid,url`
   and
-  `gh pr view <pr> --repo <repo> --json number,state,isDraft,headRefName,headRefOid,baseRefName,mergeable,mergeStateStatus,mergeCommit,statusCheckRollup,url`;
+  `gh pr view <pr> --repo <repo> --json number,state,isDraft,title,headRefName,headRefOid,baseRefName,mergeable,mergeStateStatus,mergeCommit,statusCheckRollup,url`,
+  the pull request draft while `isDraft` is true or its title starts
+  `Draft: ` (step 4);
 - for a task that held the lock, the main workflow's run for the merge
   commit and its jobs —
   `gh run list --repo <repo> --workflow <mainWorkflow> --commit <merge sha> --json databaseId,workflowName,event,status,conclusion,headBranch`,
   then `gh run view <run id> --repo <repo> --json status,conclusion,jobs` for
-  `validate`, `deploy` and `<smokeJob>` — and the tag,
+  the `validate / flow` and `validate / project` jobs, `deploy` and
+  `<smokeJob>` — and the tag,
   `git ls-remote origin 'refs/tags/v<VERSION>^{}'`;
 - its worktrees, which `node .claude/scripts/delivery-queue.mjs show <n>`
   lists.
@@ -406,10 +414,10 @@ Then apply the five gates, in this order.
 **Epic gate.** An issue labelled `type:epic` is an epic that `/decompose`
 filed (D25): its `## Children` lists the issues it is delivered through, each
 groomed and delivered as any other, and it is closed when the last of them is
-delivered (Outcomes). The cycle never takes an epic. `pick` passes one over;
-one offered anyway is skipped (Skipping below), its comment saying that it is
-an epic, delivered through its children, so `state:ready` does not belong on
-it.
+delivered (`docs/DELIVERY.md` step 6). The cycle never takes an epic. `pick`
+passes one over; one offered anyway is skipped (Skipping below), its comment
+saying that it is an epic, delivered through its children, so `state:ready`
+does not belong on it.
 
 **Owner-steps gate.** An action only the owner can take before delivery — a
 repository or cloud setting, a secret, a token, a DNS record — is listed at
@@ -595,9 +603,16 @@ number, or `commands.test` when it is empty; `<taskDown>` is
    `cd <worktree> && git commit --allow-empty -F <file>`, the subject
    `Start #<n>: <issue title>` — and pushes the branch,
    `git push --set-upstream origin HEAD`. The commit changes no file, so no
-   fingerprint and no review artifact sees it. Then
-   `gh pr create --repo <repo> --draft --base <main> --head <branch> --title '<title>' --body-file <file>`,
-   the title in single quotes with none inside it. The body follows
+   fingerprint and no review artifact sees it. Then the pull request is
+   opened as a draft, in the form `delivery.draftPullRequests` picks
+   (`docs/DELIVERY.md`, Configuration; D22) — true:
+   `gh pr create --repo <repo> --draft --base <main> --head <branch> --title '<title>' --body-file <file>`;
+   false, where GitHub has no draft pull requests:
+   `gh pr create --repo <repo> --base <main> --head <branch> --title 'Draft: <title>' --body-file <file>`,
+   the `Draft: ` prefix marking it draft. Every title in this procedure goes
+   in single quotes with none inside it. A pull request is draft while
+   `isDraft` is true or its title starts `Draft: `, and a draft is never
+   merged (step 9). The body follows
    `.github/pull_request_template.md` and carries the goal, the observable
    acceptance criteria, the design reference (or `No visual change`),
    whether the version changes when `delivery.versioning` is true (the
@@ -612,7 +627,8 @@ number, or `commands.test` when it is empty; `<taskDown>` is
    recovery is a revert pull request. The body names the issue as
    `Issue: #<n>`, never with a closing keyword (`Closes`, `Fixes`,
    `Resolves`): GitHub would close the issue at the merge, and the run closes
-   it by hand after the verification. Record the pull request:
+   it after the verification, as `docs/DELIVERY.md` step 6 says. Record the
+   pull request:
    `update <n> --session <id> --pr <pr>`.
 5. **Developer**, with the task, the criteria, the `BASE_SHA`, the branch, the
    worktree path, the decision id reserved for it when the task needs one and
@@ -766,10 +782,11 @@ number, or `commands.test` when it is empty; `<taskDown>` is
    inside the task's scope are fixed within the round cap of step 10, and its
    other findings become follow-up issues filed as step 10 says. After the
    third round a fire fixes none of them: a blocking defect still open ends
-   the run BLOCKED with the draft pull request, and every other finding
-   becomes a follow-up issue. A wrong finding is declined with the reason. A
-   blocking finding about a material risk that the run would decline ends
-   the run BLOCKED, with the draft pull request and the finding named. A
+   the run BLOCKED with the pull request, still draft, and every other
+   finding becomes a follow-up issue. A wrong finding is declined with the
+   reason. A blocking finding about a material risk that the run would
+   decline ends the run BLOCKED, with the pull request, still draft, and the
+   finding named. A
    skip, `outside review skipped: <reason>`, is recorded in the pull request
    and the run goes on. A skip that needs the owner is reported once until
    it is fixed, and the script says which skip is still to be reported: only
@@ -861,14 +878,17 @@ number, or `commands.test` when it is empty; `<taskDown>` is
      need be.
    - **Merge** as `docs/DELIVERY.md` step 5 says. The main session first
      checks the pull request:
-     `gh pr view <pr> --repo <repo> --json number,state,isDraft,headRefName,headRefOid,baseRefName,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup,url`
+     `gh pr view <pr> --repo <repo> --json number,state,isDraft,title,headRefName,headRefOid,baseRefName,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup,url`
      shows `headRefOid` equal to the checked SHA, `baseRefName` equal to
      `<main>` and `mergeable` `MERGEABLE`, and `gh pr checks <pr> --repo <repo>`
      shows every check passed for it, a skipped, cancelled or neutral one not
-     counting as a passed required one. GitHub merges no draft, so it then
-     marks the pull request ready, `gh pr ready <pr> --repo <repo>`, checks
-     the token, and merges through the queue, which checks the token holding
-     its mutex and then runs `gh pr merge` itself with `--repo <repo>`,
+     counting as a passed required one. A draft is never merged, so it then
+     marks the pull request ready — with `delivery.draftPullRequests` true
+     `gh pr ready <pr> --repo <repo>`, with it false
+     `gh pr edit <pr> --repo <repo> --title '<the title without the Draft: prefix>'`
+     — reads `isDraft` and `title` again to see that it is no longer draft,
+     checks the token, and merges through the queue, which checks the token
+     holding its mutex and then runs `gh pr merge` itself with `--repo <repo>`,
      `--merge` and `--match-head-commit <the checked SHA>`, reporting gh's
      exit and output (D16):
      `node .claude/scripts/delivery-queue.mjs merge <n> --token <token> --sha <checked SHA>`,
@@ -877,15 +897,17 @@ number, or `commands.test` when it is empty; `<taskDown>` is
      or without. A stale token is refused before GitHub is asked; a failed
      merge exits 1 with gh's output, and the task's next step says to read
      the pull request before acting again. A pull request that will not
-     merge and whose task ends BLOCKED is put back to draft,
-     `gh pr ready <pr> --repo <repo> --undo`.
+     merge and whose task ends BLOCKED is put back to draft: with
+     `delivery.draftPullRequests` true `gh pr ready <pr> --repo <repo> --undo`,
+     with it false `gh pr edit <pr> --repo <repo> --title 'Draft: <title>'`.
    - **Follow the run, verify, tag**, as `docs/DELIVERY.md` step 6: the merge
      commit from `gh pr view <pr> --repo <repo> --json state,mergeCommit`
      (`state` `MERGED`), the main workflow's run for it passed (Following a
      run, below), its jobs read with
      `gh run view <run id> --repo <repo> --json status,conclusion,jobs` —
-     with `delivery.deploy` true `validate`, `deploy` and `<smokeJob>` each
-     passed, with it false the run's success alone. With `delivery.deploy`
+     with `delivery.deploy` true the `validate / flow` and
+     `validate / project` jobs, `deploy` and `<smokeJob>` each passed, with
+     it false the run's conclusion alone. With `delivery.deploy`
      true and `<site>` set, the changed behaviour is then verified on
      `<site>` with disposable test data of the check's own, touching nothing
      else there. Then, with `delivery.versioning` true and `VERSION` changed,
@@ -899,8 +921,9 @@ number, or `commands.test` when it is empty; `<taskDown>` is
      `git tag -a v<VERSION> <merge sha> -m "v<VERSION>"`,
      `git push origin refs/tags/v<VERSION>`, and
      `git ls-remote origin 'refs/tags/v<VERSION>^{}'` again, which must print
-     the merge commit. Then the task leaves the queue (Outcomes), which
-     releases the lock.
+     the merge commit. Then the epic, when the issue has one, is ticked
+     while the lock is still held; the task leaves the queue, which releases
+     the lock; and the issue is closed (Outcomes; `docs/DELIVERY.md` step 6).
    - **A failed run after the merge.** A main workflow run that fails is
      recovered as `docs/DELIVERY.md`, Recovery, says, with the lock held: no
      other task merges until the run passes or the recovery is verified.
@@ -979,12 +1002,12 @@ number, or `commands.test` when it is empty; `<taskDown>` is
       corrupted, one client can take the service down, data leaks, or a
       documented contract breaks, with the project's own priorities in
       `CLAUDE.md`. After the third round a fire fixes nothing more: a
-      blocking defect still open ends the run BLOCKED, with the draft pull
-      request and the defect named, and every other finding becomes a
-      follow-up issue, filed as the next item says and listed in the pull
-      request, which merges on the tester's PASS and the reviewer's APPROVED
-      or APPROVED WITH MINORS. The main session classifies every finding
-      still open after the third round as blocking or not by that
+      blocking defect still open ends the run BLOCKED, with the pull
+      request, still draft, and the defect named, and every other finding
+      becomes a follow-up issue, filed as the next item says and listed in
+      the pull request, which merges on the tester's PASS and the reviewer's
+      APPROVED or APPROVED WITH MINORS. The main session classifies every
+      finding still open after the third round as blocking or not by that
       document's definition, and a verdict whose every open finding it filed
       so, the pull request giving per finding the issue and one sentence on
       why it is not blocking, no longer stops the merge (`docs/DELIVERY.md`
@@ -1077,27 +1100,22 @@ Every task ends in exactly one of these, and every one of them removes
 issue a task gave up on**: the label is what `pick` reads, and a failure left
 in it is offered again to every later fire.
 
-A DELIVERED issue whose description carries an `Epic: #<epic>` line ticks its
-box in the epic first, while the task still holds the lock, so that two
-deliveries never write one epic's description at once (D25):
+Every DELIVERED issue is closed and, when its description carries an
+`Epic: #<epic>` line, its box in that epic ticked and the epic closed once it
+was the last, as `docs/DELIVERY.md` step 6 says of every delivery, attended
+or not; this section adds only the timing and the epic's comment. The epic
+comes first, while the task still holds the lock and before `finish`, so that
+two deliveries never write one epic's description at once (D25). The comment
+that closes a finished epic reads:
 
-1. `gh issue view <epic> --repo <repo> --json number,state,body` reads the
-   epic. An epic already closed, or one with no `- [ ] #<n>` or `- [x] #<n>`
-   line for this issue under `## Children`, is left as it is, and the final
-   message names it.
-2. The whole body, with that one line's `- [ ]` turned to `- [x]`, is written
-   with the Write tool to a file in the scratchpad; a box already ticked
-   needs no edit.
-3. In a later call — never in the same parallel batch as the Write —
-   `gh issue edit <epic> --repo <repo> --body-file <file>`, its exit code
-   checked.
-4. When no `- [ ]` box is left under the epic's `## Children`, the epic is
-   done: comment on it, `gh issue comment <epic> --repo <repo> --body-file <file>`,
-   `Scheduled run <time>: epic done — every child is delivered: #<n>, #<n>.
-   Closing.`, then `gh issue close <epic> --repo <repo>`.
+```text
+Scheduled run 2026-09-22 02:04:11 +0300: epic done — every child is delivered: #<n>, #<n>. Closing.
+```
 
-A failed step here is named in the result comment and the final message, and
-does not change the task's outcome.
+An epic already closed, or one with no `- [ ] #<n>` or `- [x] #<n>` line for
+this issue under `## Children`, is left as it is, and the final message names
+it. A failed step here is named in the result comment and the final message,
+and does not change the task's outcome.
 
 The task leaves the queue with
 `node .claude/scripts/delivery-queue.mjs finish <n> <outcome> --session <id>`,
@@ -1105,7 +1123,8 @@ the outcome `delivered`, `blocked`, `recovered` or `stopped`, with
 `--token <token>` when it holds the lock, which this releases; its output
 lists the task's worktrees, which End of run removes. Then the same three
 commands as ever, the comment written to a scratchpad file first, each in a
-call of its own:
+call of its own — the DELIVERED comment being the one step 6 asks for,
+naming the merge commit's SHA:
 
 ```sh
 gh issue comment <n> --repo <repo> --body-file <file>
@@ -1156,18 +1175,18 @@ Follow-up issues: <the follow-up issues filed or commented on, if any>
 Owner action needed: <the step from the outside review's skip line, if any>
 ```
 
-**BLOCKED.** Comment with the concrete blocker, the draft pull request, what
-the owner has to do, and the follow-up issues, if any, then remove the label.
-The pull request stays a draft and unmerged, the branch is kept, the
-worktrees are removed.
+**BLOCKED.** Comment with the concrete blocker, the pull request, still
+draft, what the owner has to do, and the follow-up issues, if any, then
+remove the label. The pull request stays draft and unmerged (step 4), the
+branch is kept, the worktrees are removed.
 
 ```text
 Scheduled run 2026-09-22 02:04:11 +0300: BLOCKED, not delivered. <The blocker,
 concretely: what was attempted, the decisive output, why it cannot be resolved
-under existing authority.> Draft PR #47 holds the work so far. `state:ready`
-has been removed. What it needs: <what the owner has to decide, provide or
-fix>. The delivery cycle will not take this issue again while this comment
-stands: finish the draft PR in an attended session, or file a fresh issue for
+under existing authority.> PR #47, still draft, holds the work so far.
+`state:ready` has been removed. What it needs: <what the owner has to decide,
+provide or fix>. The delivery cycle will not take this issue again while this
+comment stands: finish that PR in an attended session, or file a fresh issue for
 what remains — grooming (`/groom`) sets up either.
 Follow-up issues: <the follow-up issues filed or commented on, if any>
 Owner action needed: <the step from the outside review's skip line, if any>
@@ -1241,7 +1260,7 @@ passed, checked on <site>. Version 0.7.0, tag v0.7.0. Issue closed.
 
 ```text
 Run 14:30 — not delivered #12: <the reason in one line>.
-PR #47 stays a draft, state:ready removed, details in the issue comment.
+PR #47 stays draft, state:ready removed, details in the issue comment.
 ```
 
 ```text
@@ -1361,10 +1380,16 @@ rule, `Bash(node .claude/scripts/delivery-queue.mjs *)`, which covers its
 merge too.
 
 The project's own commands are granted by rules `/flow-init` writes from
-`.claude/flow.json`: one per command it names — `commands.install`, `check`,
+`.claude/flow.json`: two per command it names — `commands.install`, `check`,
 `test`, `taskTest`, `taskDown`, `e2e`, `build` and `delivery.rollback` —
-its leading words followed by ` *` (for `{task}`, its value); and, with
-`<site>` set, `Bash(curl -sS <site>/*)` and `Bash(curl -sS * <site>/*)`. A
+the exact command as `Bash(<command>)` and `Bash(<command> *)`, `{task}`
+written as `*`; and, with `<site>` set, `Bash(curl -sS <site>/*)` and
+`Bash(curl -sS * <site>/*)`. A pull request that changes `commands.*` or
+`delivery.rollback` in `.claude/flow.json` adds the matching rules to
+`.claude/settings.json` in the same pull request, and
+`.claude/tests/flow-consistency.test.mjs` fails one that does not: without
+them this run cannot run the new command, since a command no rule covers is
+not run unattended (`docs/DELIVERY.md`, Configuration). A
 command among them that sets a variable in front of itself is not granted by
 its rule: the project wraps it in a script of its own, which the rule names.
 `<owner>/<name>` below is `project.repo`, written into the rules the same way.

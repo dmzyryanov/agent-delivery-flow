@@ -9,11 +9,12 @@ Filing turns what was said in chat — an idea, a defect, external feedback, a
 part of a split or a child of an epic — into an issue that `/groom` can take up
 later with no one remembering the conversation. It is mode `plan`
 (`docs/DELIVERY.md`): no branch, worktree, commit or pull request. Talk to the
-owner in `project.ownerLanguage` from `.claude/flow.json` (Russian by
-default); write issue text in English, as the existing issues are. A question
-for the owner goes in the message text, never only in a UI box. With several
-issues at once, as after external feedback or a split, each goes through every
-step. Filing approves nothing and starts no delivery.
+owner in `project.ownerLanguage` from `.claude/flow.json` (English by
+default; `/flow-init` sets it from the chat); write issue text in English, as
+the existing issues are. A question for the owner goes in the message text,
+never only in a UI box. With several issues at once, as after external
+feedback or a split, each goes through every step. Filing approves nothing
+and starts no delivery.
 
 `R` below is the repository `node .claude/scripts/flow-config.mjs project.repo`
 prints, `owner/name`, written out in every `gh` command.
@@ -113,10 +114,10 @@ there. Never change the boxes others ticked.
 ## 5. Report
 
 One message, in the owner's language. Per issue: `#<n> <title>`, its link,
-then the owner's context block taken from its `## Problem`: **Проблема**,
-**Откуда**, **Если сделаем**, **Если не сделаем** (in another language:
-Problem, Where from, If we do it, If we don't), one or two lines each, in
-plain words, with no file paths or decision numbers, inference marked. For a
-child of an epic, the epic it joined. Under it, in one line, the questions
-left for the owner, if any, written out in the message; `/groom` takes them
-up.
+then the owner's context block taken from its `## Problem`, its headings in
+the owner's language: **Problem**, **Where it came from**, **If we do it**,
+**If we don't** (in Russian: **Проблема**, **Откуда**, **Если сделаем**,
+**Если не сделаем**), one or two lines each, in plain words, with no file
+paths or decision numbers, inference marked. For a child of an epic, the epic
+it joined. Under it, in one line, the questions left for the owner, if any,
+written out in the message; `/groom` takes them up.

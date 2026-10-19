@@ -5,7 +5,7 @@ comment; a placeholder left in the file means the project is not initialised.
 {{PROJECT_NAME}}            the project's name, as in `project.name` of `.claude/flow.json`
 {{PROJECT_SUMMARY}}         one paragraph: what the project is, for whom, and where it runs (its site, or "no deployed site")
 {{AUTHORITY_DATE}}          the date the owner ran `/flow-init` and so approved autonomous delivery, YYYY-MM-DD
-{{OWNER_LANGUAGE}}          the language the owner is spoken to in, as in `project.ownerLanguage` (default Russian)
+{{OWNER_LANGUAGE}}          the language the owner is spoken to in, as in `project.ownerLanguage` (default English; `/flow-init` sets it from the chat)
 {{STACK}}                   languages and frameworks on each side, and the conventions to keep (one or two sentences)
 {{REPOSITORY_STRUCTURE}}    a text tree of the repository's top two levels, the flow's own `.claude/`, `.github/` and `docs/` included
 {{DEVELOPMENT_PRIORITIES}}  a numbered list, most important first; the first is what a blocking defect is measured against
@@ -79,10 +79,11 @@ tasks.
 - An additive in-scope contract change updates every side of the contract,
   shared types, tests and docs together in one PR. A breaking change to a part
   `docs/ARCHITECTURE.md` lists under `Stable parts` is not delivered without
-  the owner: in an attended session the Coordinator asks the owner; an
-  unattended run ends BLOCKED with the draft PR. Evaluate clients already
-  running, stored data and recovery; beyond what `Stable parts` promises
-  there is no obligation to support unused external versions.
+  the owner's recorded approval: in an attended session the Coordinator asks
+  the owner; an unattended run ends BLOCKED with the PR, still draft.
+  Evaluate clients already running, stored data and recovery; beyond what
+  `Stable parts` promises there is no obligation to support unused external
+  versions.
 - With `delivery.versioning` on, `VERSION` is the product version; apply
   docs/DELIVERY.md's bump/tag policy. A new major version, the first 1.0.0
   included, is a separate owner decision.

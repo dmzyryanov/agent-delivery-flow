@@ -15,7 +15,7 @@
 // - a change to a runtime file needs a changed VERSION; a change to nothing
 //   but documentation, tests and delivery tooling keeps it.
 //
-// Not runtime: `*.md`, `docs/**`, `.claude/**`, `.github/**`, `VERSION`,
+// Not runtime: `*.md`, `docs/**`, `.claude/**`, `.github/**`, `.mcp.json`, `VERSION`,
 // `CHANGELOG.md`, and test files (`*.test.*`, `*.spec.*`, anything under a
 // `test/`, `tests/`, `__tests__/` or `e2e/` directory). Everything else is.
 //
@@ -30,7 +30,7 @@ import { FlowConfigError, loadFlow } from './flow-config.mjs';
 const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 
 export function isRuntimePath(path) {
-  if (path === 'VERSION' || path === 'CHANGELOG.md') return false;
+  if (path === 'VERSION' || path === 'CHANGELOG.md' || path === '.mcp.json') return false;
   if (path.endsWith('.md')) return false;
   if (/^(docs|\.claude|\.github)\//.test(path)) return false;
   if (/\.(test|spec)\.[^/]+$/.test(path)) return false;

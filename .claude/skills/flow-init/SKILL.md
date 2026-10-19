@@ -17,12 +17,18 @@ Read `.claude/flow.json` and `git remote get-url origin`, then pick one case:
 
 - **A. The kit itself** — `project.repo` is empty and `origin` is the
   template repository (`gh repo view --json isTemplate --jq .isTemplate` says
-  `true`). The run creates the new project from the template (step 3) and
-  carries on in that new checkout: every later command runs there, with
-  `git -C <checkout>` or `cd <checkout> && …` in the same Bash call, and every
-  file it writes is under it.
+  `true`). The run checks the preconditions (step 1), asks the questions
+  (step 2), creates the new project from the template (step 3), writes the
+  answers into the new checkout as `.claude/flow-init.answers.md` (ignored by
+  Git), and stops there: the rest must run in a session of the new
+  checkout, whose transcript the delivery queue can see and whose settings
+  load the project's Bash guard. Tell the owner to open the new folder in
+  Claude Code and run `/flow-init` again; it continues as case B.
 - **B. A project made from the template** — `project.repo` is empty and
-  `origin` is not a template. The run configures this checkout.
+  `origin` is not a template. The run configures this checkout, the one the
+  session was opened in. When `.claude/flow-init.answers.md` exists, it holds
+  the owner's answers from case A: read it, show them in one short list, ask
+  only what it leaves open, and delete the file once step 6 has merged.
 - **C. Already set up** — `project.repo` is filled. Say so, show the values,
   and ask what to change; change only that, through steps 4–9 as they apply.
 
@@ -52,8 +58,9 @@ Ask in one message, numbered, each with its default:
 1. Project name and repository `owner/name` (default owner: the `gh` login;
    name: the project name in kebab case); private (default) or public.
 2. One paragraph: what it is, for whom, where it runs.
-3. The owner's language for chat and reports (default: the language of this
-   chat).
+3. The owner's language for chat, reports, issues' Context blocks and the
+   scheduled tasks' titles (default: the language of this chat), written to
+   `project.ownerLanguage`.
 4. Stack — languages, frameworks, package manager — or "decide in the first
    epic" (default). With a stack named, the commands `install`, `check`,
    `test`, `build` and, if suites need a database or ports, `taskTest` and
@@ -68,7 +75,7 @@ Ask in one message, numbered, each with its default:
 9. Scheduled tasks: the delivery cycle every 30 minutes and grooming every 15
    (defaults), as desktop-app tasks (default) or launchd jobs behind the
    no-token check (`docs/tooling/scheduled-fires.md`); up to 3 tasks
-   developed at once (default).
+   developed at once (default; applied with `set slots <n>` in step 6).
 
 The owner's go-ahead to this run is also the authority of `CLAUDE.md`
 (autonomous delivery of `state:ready` issues): say so in the message, and
@@ -84,7 +91,9 @@ gh repo create <owner>/<name> --private --template <template owner/name> --clone
 the new checkout is its sibling. Then in the new checkout:
 `git config commit.gpgsign false` and `git config tag.gpgsign false` when the
 global config signs commits (signing needs a TTY a session does not have).
-From here on, "the checkout" is that directory.
+Then write `.claude/flow-init.answers.md` there — the owner's answers,
+numbered as the questions, and today's date as the authority date — and end
+the run as case A says.
 
 ## 4. Files
 
@@ -103,8 +112,14 @@ worktree:
   then delete that comment; `grep -n '{{' CLAUDE.md` finds none afterwards.
 - `docs/PRODUCT.md`, `docs/ARCHITECTURE.md` — the paragraph and the stack;
   `Stable parts` says "none yet".
-- `docs/RESOURCES.md` — repository URL, site, where secrets live (names,
-  never values), the scheduler chosen.
+- `docs/RESOURCES.md` — replace every `{{…}}` placeholder, writing "none"
+  where the project has no such thing, then delete the comment at its top;
+  `grep -n '{{' docs/RESOURCES.md` finds none afterwards.
+- `delivery.draftPullRequests` in `.claude/flow.json` — `true` when the
+  repository is public, or private under an organization the owner says is
+  on GitHub Team or Enterprise; otherwise `false` (GitHub has no draft pull
+  requests on private repositories of Free and Pro accounts, and the
+  procedures then mark a PR not yet ready with a `Draft: ` title prefix).
 - `VERSION` `0.1.0` and a CHANGELOG entry `## 0.1.0` "Project set up on the
   delivery flow" when versioning is on; otherwise remove both and say so.
 - `.claude/delivery-areas.json` — adjust the ordinary areas' globs to the
@@ -112,9 +127,10 @@ worktree:
   defect loses or leaks data (the owner names them, or say which you chose);
   leave the hard areas.
 - `.claude/settings.json` — the rules the delivery cycle's Permissions block
-  says `/flow-init` writes: one allow entry per non-empty command in
-  `.claude/flow.json` (`commands.*` and `delivery.rollback`), its leading
-  words followed by ` *`; with `project.site` set, `Bash(curl -sS <site>/*)`
+  says `/flow-init` writes: for each non-empty command in
+  `.claude/flow.json` (`commands.*` and `delivery.rollback`), with `{task}`
+  written as `*`, `Bash(<command>)` and `Bash(<command> *)` —
+  `flow-consistency.test.mjs` checks both; with `project.site` set, `Bash(curl -sS <site>/*)`
   and `Bash(curl -sS * <site>/*)`; and the block's two `gh api` rules with
   `<owner>/<name>` replaced by `project.repo`. A command that sets a
   variable in front of itself gets no rule: wrap it in a script and grant
@@ -175,8 +191,12 @@ does, which also proves `gh`, CI and the queue work:
    (not draft); the body lists what step 4 wrote and the owner's answers.
 2. Wait for the PR's checks: `gh pr checks <n> --repo R --watch` in the
    background. A failing check is fixed on the branch first.
-3. In the checkout, with `<id>` this session's id (the directory that holds
-   its scratchpad):
+3. In the worktree — `cd <worktree> && node .claude/scripts/delivery-queue.mjs …`,
+   because the queue reads `.claude/flow.json` beside itself and main's copy
+   is still unconfigured; the queue's state is shared through the git
+   directory either way — with `<id>` this session's id (the directory that
+   holds its scratchpad): first `set slots <n>` when the owner chose other
+   than 3, then
    `node .claude/scripts/delivery-queue.mjs start day-flow-init --session <id> --branch chore/flow-init --worktree <worktree> --base <base sha> --areas delivery-process --day`,
    `… update day-flow-init --session <id> --pr <n>`,
    `… lock day-flow-init --session <id>` (prints the token),
@@ -184,7 +204,8 @@ does, which also proves `gh`, CI and the queue work:
    main's run for the merge commit has passed,
    `… finish day-flow-init delivered --session <id> --token <token>`.
 4. `git -C <checkout> worktree remove <worktree>`, then
-   `git -C <checkout> pull --ff-only` (the checkout stays on main).
+   `git -C <checkout> pull --ff-only` (the checkout stays on main), and
+   delete `.claude/flow-init.answers.md` if it is there.
 
 The Bash guard refuses every other merge and any push to main; do not look for
 a way around it.
@@ -199,7 +220,8 @@ gh api --method POST repos/R/rulesets --input <file>
 
 with a ruleset `main` targeting `~DEFAULT_BRANCH`, enforcement `active`,
 rules `deletion`, `non_fast_forward`, `pull_request` (0 approvals) and
-`required_status_checks` on the CI job names `flow` and `project`. GitHub
+`required_status_checks` on the pull-request check names `flow` and
+`project` (the jobs of `.github/workflows/ci.yml`). GitHub
 refuses rulesets on a private repository of a Free account (HTTP 403 or 422
 naming the plan): that is not a failure — write in `docs/RESOURCES.md`, on a
 follow-up commit through the next delivery, that main is guarded only by the
@@ -210,7 +232,8 @@ repository public or upgrade the account to Pro.
 
 Desktop-app tasks (default): create two with `create_scheduled_task`, ids
 `<repo-name>-delivery-cycle` and `<repo-name>-grooming`, titles
-"<Project> — цикл поставки" / "<Project> — груминг" in the owner's language,
+"<Project> — delivery cycle" / "<Project> — grooming" written in the owner's
+language (in Russian: "<Project> — цикл поставки" / "<Project> — груминг"),
 `cronExpression` from `schedule.cycle` and `schedule.grooming`,
 `notifyOnCompletion: false`, and the prompt (absolute paths):
 

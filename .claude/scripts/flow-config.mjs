@@ -22,7 +22,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 export class FlowConfigError extends Error {}
 
 const DEFAULTS = {
-  project: { name: '', repo: '', mainBranch: 'main', site: '', ownerLanguage: 'Russian' },
+  project: { name: '', repo: '', mainBranch: 'main', site: '', ownerLanguage: 'English' },
   commands: {
     install: '',
     check: '',
@@ -34,6 +34,7 @@ const DEFAULTS = {
   },
   delivery: {
     versioning: true,
+    draftPullRequests: false,
     deploy: false,
     mainWorkflow: 'main.yml',
     smokeJob: 'smoke',

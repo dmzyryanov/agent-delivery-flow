@@ -8,7 +8,7 @@ description: Backlog grooming. Picks the most relevant open GitHub issue (or the
 Grooming brings one issue at a time to the point where the owner can label it
 `state:ready`. It is mode `plan` (`docs/DELIVERY.md`): no branch, worktree,
 commit or pull request. Talk to the owner in `project.ownerLanguage` from
-`.claude/flow.json` (Russian by default; the Russian forms below are its);
+`.claude/flow.json` (English by default; `/flow-init` sets it from the chat);
 write issue text in English, as the existing issues are. A question for the
 owner goes in the message text, never only in a UI box.
 
@@ -69,7 +69,7 @@ scope is the owner's own action, and issues carrying two `state:` or two
 `state:grooming`, so that one an abandoned chat or a dead run left is seen,
 each named by its newest `Grooming run` comment: a claim is a grooming run's;
 a result is a dead grooming run's, which the owner releases by naming the
-issue; none, or `released to a /groom chat`, is a chat's — the `Груминг: #…`
+issue; none, or `released to a /groom chat`, is a chat's — the `Grooming: #…`
 chat titles in the sidebar tell the owner which are live, and naming one here
 takes it over. Propose the pick alone, with no list of alternatives, and
 groom only it; if the owner wants a different one, they name it.
@@ -77,13 +77,14 @@ groom only it; if the owner wants a different one, they name it.
 Name the chat after its issues, so the owner can tell grooming chats apart in
 the sidebar. As soon as an issue is taken — the pick, or one the owner names —
 rename this chat with `mcp__ccd_session_mgmt__set_session_title` and
-`session_id: "self"`, loading the tool through `ToolSearch` first. The title is
-`Груминг:` (in the owner's language) and every issue groomed in this chat so
-far, in order, each as `#<n>` plus a two-to-four-word name in the owner's
-language drawn from the issue title: `Груминг: #71 Поиск по телу, #72 Фильтр
-заголовков`. A pick the owner swaps for another before discussing it is
-replaced in the title, not kept. Past about 80 characters, the earliest issues
-keep only their number, oldest first, until it fits. If the tool is missing (a
+`session_id: "self"`, loading the tool through `ToolSearch` first. The title,
+written in the owner's language, is `Grooming:` and every issue groomed in
+this chat so far, in order, each as `#<n>` plus a two-to-four-word name drawn
+from the issue title: `Grooming: #71 Body search, #72 Header filter`; in
+Russian, `Груминг: #71 Поиск по телу, #72 Фильтр заголовков`. A pick the
+owner swaps for another before discussing it is replaced in the title, not
+kept. Past about 80 characters, the earliest issues keep only their number,
+oldest first, until it fits. If the tool is missing (a
 terminal session), declines or fails, carry on without it; after a decline,
 leave this chat's title alone.
 
@@ -238,19 +239,21 @@ next issue is proposed.
 
 ## 3. Present it
 
-One message, in the owner's language, in this shape (the Russian headings):
+One message, written in the owner's language, its headings too, in this
+shape (in Russian: **Суть**, **Контекст**, **Как делаю**, **Вопросы**,
+**До ready не хватает**):
 
-- **Суть**: one line.
-- **Контекст**: the owner's context block, from the `## Problem` checked or
-  reconstructed in step 2, inference marked: **Проблема**, **Откуда**,
-  **Если сделаем**, **Если не сделаем** (in another language: Problem, Where
-  from, If we do it, If we don't), one or two lines each, in plain words, with
-  no file paths or decision numbers. The owner does not read issue text; this
-  block is what they read.
-- **Как делаю**: the implementation approach, a few bullets.
-- **Вопросы**: numbered, each with a recommendation; for an issue a grooming
-  run prepared, its questions and directions as written.
-- **До ready не хватает**: unmet gates, owner steps, missing design.
+- **Gist**: one line.
+- **Context**: the owner's context block, from the `## Problem` checked or
+  reconstructed in step 2, inference marked: **Problem**, **Where it came
+  from**, **If we do it**, **If we don't** (in Russian: **Проблема**,
+  **Откуда**, **Если сделаем**, **Если не сделаем**), one or two lines each,
+  in plain words, with no file paths or decision numbers. The owner does not
+  read issue text; this block is what they read.
+- **Approach**: the implementation approach, a few bullets.
+- **Questions**: numbered, each with a recommendation; for an issue a
+  grooming run prepared, its questions and directions as written.
+- **Missing before ready**: unmet gates, owner steps, missing design.
 
 Short; expand only when asked.
 

@@ -178,3 +178,27 @@ test('the main workflow and its smoke job are the ones the flow follows', () => 
   assert.match(ci, /^ {2}project:$/m);
   assert.match(ci, /node --test \.claude\/tests\/\*\.test\.mjs/);
 });
+
+test("every command of the project's configuration has its allow rules", () => {
+  const flow = JSON.parse(read('.claude/flow.json'));
+  const allow = JSON.parse(read('.claude/settings.json')).permissions?.allow ?? [];
+  const commands = [
+    ...Object.entries(flow.commands ?? {}).filter(([key]) => key !== 'about'),
+    ['delivery.rollback', flow.delivery?.rollback ?? ''],
+  ];
+  const missing = [];
+  for (const [name, value] of commands) {
+    if (typeof value !== 'string' || value === '') continue;
+    const command = value.replaceAll('{task}', '*');
+    for (const rule of [`Bash(${command})`, `Bash(${command} *)`]) {
+      if (!allow.includes(rule)) missing.push(`${name}: ${rule}`);
+    }
+  }
+  assert.deepEqual(missing, [], 'a PR that sets a command adds its rules to .claude/settings.json');
+});
+
+test('docs/RESOURCES.md keeps its template comment or no placeholder at all', () => {
+  const text = read('docs/RESOURCES.md');
+  const comment = /^<!--[\s\S]*?placeholders?[\s\S]*?-->/i.test(text.trimStart());
+  if (!comment) assert.doesNotMatch(text, /\{\{[A-Z_]+\}\}/, 'a filled RESOURCES.md keeps no placeholder');
+});

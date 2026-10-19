@@ -55,6 +55,36 @@ in the role's definition (D8).
 - `schedule.cycle`, `schedule.grooming`, `schedule.morningFire`: when the
   scheduled tasks fire (Unattended scheduled runs).
 
+`delivery.draftPullRequests` says how a PR is held back until it is to merge
+(D22). GitHub has no draft pull requests on a private repository of a Free or
+Pro account, so the key is false by default, and `/flow-init` sets it true for
+a public repository or a private one on Team or Enterprise.
+
+- True: the PR is opened with `gh pr create --draft …`, marked ready with
+  `gh pr ready <n> --repo <project.repo>`, and put back to draft with
+  `gh pr ready <n> --repo <project.repo> --undo`.
+- False: the PR is opened with `gh pr create …` without `--draft`, its title
+  prefixed `Draft: `; it is marked ready with
+  `gh pr edit <n> --repo <project.repo> --title '<title without the prefix>'`,
+  and put back to draft by the same command re-adding the prefix. The title
+  goes in single quotes, with none inside it, so that a backtick in it is not
+  a command substitution.
+
+Either way a PR is *draft* while it is a GitHub draft or its title starts
+`Draft: `, and a draft PR is never merged: marking it ready is the step right
+before the queue's `merge` (step 5), and "the PR, still draft" below means
+either form.
+
+The project's own commands — `commands.*` and `delivery.rollback` — run
+without a prompt only through allow rules in `.claude/settings.json`, which
+`/flow-init` writes from `.claude/flow.json`. A PR that changes any of them in
+`.claude/flow.json` adds the matching allow rules to `.claude/settings.json`
+in the same PR: the exact command as `Bash(<command>)` and
+`Bash(<command> *)`, `{task}` written as `*`.
+`.claude/tests/flow-consistency.test.mjs` fails a PR that does not. Without
+them an unattended run cannot run the new command: a command no rule covers
+is not run unattended (`.claude/scheduled/delivery-cycle.md`, Permissions).
+
 ## Modes
 
 A task names one mode. `full` is the default for an owner-approved
@@ -87,12 +117,13 @@ process does not authorise deleting data or weakening security.
 ## One task, one PR
 
 1. Capture the owner's goal, scope, observable acceptance criteria, design link
-   or saved design reference, target version and recovery plan in one draft PR.
+   or saved design reference, target version and recovery plan in one PR,
+   opened as a draft (Configuration).
    A conversational handoff is sufficient input: record it in that same PR.
    A new brief, issue, milestone or requirements-only PR is not a prerequisite.
    The PR names its issue as `Issue: #<n>`, never with a closing keyword
    (`Closes`, `Fixes`, `Resolves`): GitHub would close the issue at the merge,
-   before the deployed check (Unattended scheduled runs; D22).
+   before the deployed check, and step 6 closes it (D22).
 2. Run `sh .claude/scripts/delivery-preflight.sh` twice: once from `main`
    before branching, and once from the task branch after cutting it. The first
    call fetches `origin`, verifies that the base carries the six agent
@@ -103,7 +134,8 @@ process does not authorise deleting data or weakening security.
    a tree belonging to another session — a task in the delivery queue, or an
    attended session's — is left alone, never tidied, a tree inside the
    repository is moved out, and a stale entry left by a crashed run of your own
-   is pruned there and then, deliberately. The
+   is pruned there and then, deliberately, by a person in an attended session
+   (Worktrees); an unattended run never prunes. The
    second call derives the commit the branch was actually cut from, checks the
    definitions there, and prints it as the BASE_SHA: that is the value the run
    stays pinned to, and it is what the diff and a review of the whole change
@@ -269,13 +301,13 @@ process does not authorise deleting data or weakening security.
    follow-up. A finding that is wrong is declined with the reason recorded; if
    the Coordinator would decline a blocking finding about a material risk, it
    asks the owner in an attended session, and in an unattended run the run
-   ends BLOCKED with the draft PR and the finding named. Every other finding
-   becomes a follow-up issue filed with `/create-task`. Fixes made in answer
-   are ordinary changes: a fresh Reviewer reads them as it reads a Reviewer
-   finding's fix, with `Base` set to the reviewed SHA, and Tester reruns what
-   they affect in every case, since they never carry a verdict forward,
-   whatever files they touch — an exception to the carry-forward and to the
-   wording fix above.
+   ends BLOCKED with the PR, still draft, and the finding named. Every other
+   finding becomes a follow-up issue filed with `/create-task`. Fixes made in
+   answer are ordinary changes: a fresh Reviewer reads them as it reads a
+   Reviewer finding's fix, with `Base` set to the reviewed SHA, and Tester
+   reruns what they affect in every case, since they never carry a verdict
+   forward, whatever files they touch — an exception to the carry-forward and
+   to the wording fix above.
 
    A skip — exit 3 and one line `outside review skipped: <reason>` — is never
    a verdict and does not stop the delivery: the PR records the reason and
@@ -369,8 +401,11 @@ process does not authorise deleting data or weakening security.
    combined state as step 4 says of merging main in.
    Merge through GitHub with the checked head SHA as a concurrency guard; the
    repository deletes the merged head branch itself, a setting `/flow-init`
-   makes. Merge and deployment happen under the
-   delivery lock (Several tasks at once): the Coordinator takes it with
+   makes. A draft PR is never merged: the Coordinator marks it ready
+   (Configuration) right before the queue's `merge`, and a PR that then does
+   not merge and whose task ends BLOCKED goes back to draft. Merge and
+   deployment happen under the delivery lock (Several tasks at once): the
+   Coordinator takes it with
    `node .claude/scripts/delivery-queue.mjs lock <task> --session <id>` and
    merges through the queue with the token it prints,
    `node .claude/scripts/delivery-queue.mjs merge <task> --token <token> --sha <sha>`,
@@ -384,14 +419,46 @@ process does not authorise deleting data or weakening security.
    authorised, and the Bash guard refuses both (D26).
 6. Follow the run of `.github/workflows/<delivery.mainWorkflow>` for the
    resulting merge commit (`gh run list --commit <sha>`, then
-   `gh run watch <id> --exit-status`), its jobs `validate`, `deploy` and
+   `gh run watch <id> --exit-status`): the `validate / flow` and
+   `validate / project` jobs, which reuse `ci.yml`, then `deploy` and
    `<delivery.smokeJob>`; with `delivery.deploy` false the run validates
-   only, and its passing ends this step but for the tag. Verify changed
-   behaviour on the deployed service where it is not covered by the generic
-   smoke. The owner has authorised disposable test data on that service for
-   the verification; touch no data that is not the check's own.
-   Then publish the version if it changed, and give a short evidence-based
-   report.
+   only, and its conclusion passing ends this step but for the tag and the
+   issue. Verify changed behaviour on the deployed service where it is not
+   covered by the generic smoke. The owner has authorised disposable test
+   data on that service for the verification; touch no data that is not the
+   check's own.
+   Then publish the version if it changed (Version).
+
+   Then close the issue, in an attended session as in an unattended run: an
+   issue a delivery leaves open keeps every issue whose `Depends on` line
+   names it waiting for ever. A task with no issue has nothing to close.
+
+   - **Its epic.** When the issue's description has an `Epic: #<e>` line, the
+     Coordinator ticks the issue's box in that epic while it still holds the
+     delivery lock, before
+     `node .claude/scripts/delivery-queue.mjs finish <task> delivered --session <id> --token <token>`
+     takes the task out of the queue and releases the lock, so that two
+     deliveries never write one epic's description at once (D25). It reads
+     the epic, `gh issue view <e> --repo <project.repo> --json number,state,body`;
+     writes the whole body, with the issue's `- [ ] #<n>` line under
+     `## Children` turned to `- [x] #<n>`, to a scratchpad file with the
+     Write tool; and in a later call — never in the same parallel batch as
+     that Write, which gives no order —
+     `gh issue edit <e> --repo <project.repo> --body-file <file>`, its exit
+     code checked. A box already ticked needs no edit; an epic already
+     closed, or one with no line for the issue, is left as it is and named
+     in the report. When no `- [ ]` box is left under `## Children`, the epic
+     is done: a comment on it saying that every child is delivered, naming
+     them, `gh issue comment <e> --repo <project.repo> --body-file <file>`,
+     then `gh issue close <e> --repo <project.repo>`.
+   - **The issue.** A comment naming the merge commit's SHA,
+     `gh issue comment <n> --repo <project.repo> --body-file <file>`, then
+     `gh issue close <n> --repo <project.repo>`. An unattended run's
+     DELIVERED result comment is that comment, posted once the task has left
+     the queue (`.claude/scheduled/delivery-cycle.md`, Outcomes).
+
+   A step here that fails is named in the report and does not undo the
+   delivery. Then give a short evidence-based report.
 
 Split into multiple PRs only for a concrete delivery, review or recovery reason;
 a split made at grooming (`/groom`, D20) is one.
@@ -431,9 +498,11 @@ destroys evidence: an entry left by your own crashed run and an entry whose
 tree another session was working in until something deleted it are identical
 afterwards, so the prune hides the second case (D3). Read the list, establish
 which case it is — a concurrent session's tree is a reason to leave it alone,
-not to tidy it — then run `git worktree prune` deliberately. The same applies
-to a leftover directory, which no prune removes: until it is gone, a later
-`git worktree add` to that path fails.
+not to tidy it — then run `git worktree prune` deliberately, a person in an
+attended session: no allow rule grants it, so it always asks, and an
+unattended run never runs it (D3). The same applies to a leftover directory,
+which no prune removes: until it is gone, a later `git worktree add` to that
+path fails.
 
 Processes are owned like trees: each role stops what it started before it
 reports (D5, D6), and the main session stops with `TaskStop` any task id a
@@ -500,14 +569,16 @@ session several tasks at once, it still implements them in parallel without
 asking again (D11), each registered as a task of its own.
 
 - **Registered.** Every task is in the queue: a fire registers the issue it
-  takes, and an attended session registers its task with `start <n> --day`,
-  or `start day-<word> --day --areas <areas>` for one without an issue — a day
-  task, in the queue's words, its origin `day` — so that fires count it toward
-  the slot limit and see what it touches. An attended session is never
-  refused. Each command names the session by its CLI session id, the
-  directory that holds its scratchpad — in a headless run, whose system prompt
-  names none, `$CLAUDE_CODE_SESSION_ID` — as
-  `.claude/scheduled/delivery-cycle.md` describes. The task's PR is recorded
+  takes, and an attended session registers its task with
+  `node .claude/scripts/delivery-queue.mjs start <n> --session <id> --branch <branch> --worktree <path> --base <BASE_SHA> --day`,
+  or, for one without an issue, the same with `day-<word>` in place of `<n>`
+  and `--areas <a,b>` added — a day task, in the queue's words, its origin
+  `day` — so that fires count it toward the slot limit and see what it
+  touches. An attended session is never refused. Each command names the
+  session by its CLI session id, the directory that holds its scratchpad —
+  in a headless run, whose system prompt names none,
+  `$CLAUDE_CODE_SESSION_ID` — as `.claude/scheduled/delivery-cycle.md`
+  describes. The task's PR is recorded
   with `update <task> --session <id> --pr <n>`.
 - **Isolated.** Each task has its own branch and worktree, cut from the
   BASE_SHA its own preflight prints, its own coordinator session and its own
@@ -672,11 +743,10 @@ does not know is left exactly as found (D3).
 
 The label comes off when the task leaves the queue — delivered, blocked,
 recovered or stopped — not at the end of each fire, so a later fire does not
-retry the same failure; a delivered issue is then closed with
-`gh issue close` after the deployed verification. Everything above in this
-document applies unchanged, including the correction and recovery limits:
-where they say to ask the owner or report a blocker, an unattended run
-records that on the issue and stops. D5, D16.
+retry the same failure; a delivered issue is closed, and its epic ticked, as
+step 6 says. Everything above in this document applies unchanged, including
+the correction and recovery limits: where they say to ask the owner or report
+a blocker, an unattended run records that on the issue and stops. D5, D16.
 
 A second scheduled task grooms, following `.claude/scheduled/grooming.md`
 (D14), from the same scheduler as the cycle and behind the same check. On
@@ -754,10 +824,11 @@ parameter, an error code, a looser limit — updates every side of the
 contract, its shared types, tests and documentation in one PR, without a
 separate approval. A breaking change to a part the project declares stable —
 listed in `docs/ARCHITECTURE.md` under `Stable parts`, with the notice its
-users are owed, if any — needs the owner: in an attended session the
-Coordinator asks; an unattended run ends BLOCKED with the draft PR. The
-Reviewer checks a change against that section. Beyond what it promises there
-is no obligation to maintain unused external versions.
+users are owed, if any — needs the owner's approval, recorded in the PR: in
+an attended session the Coordinator asks the owner; an unattended run ends
+BLOCKED with the PR, still draft. The Reviewer checks a change against that
+section. Beyond what it promises there is no obligation to maintain unused
+external versions.
 
 Consider clients already running — open browser tabs, installed clients,
 scripts others run against the service — retained data and recovery:
@@ -795,8 +866,8 @@ in further rounds limited to it, with no second Codex run, and after each such
 round the Coordinator tells the owner in the chat what is being fixed and why.
 If outside review is enabled and has not run yet, it runs once on the final
 candidate, as step 4 says. In an unattended run — a fire of the delivery
-cycle, at any hour — the run ends BLOCKED with the draft PR, the defect
-named.
+cycle, at any hour — the run ends BLOCKED with the PR, still draft, the
+defect named.
 
 A defect is blocking when, in a realistic case, data is lost or corrupted,
 one client can take the service down, data leaks, or a documented contract

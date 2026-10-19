@@ -8,3 +8,5 @@ node_modules/
 # this entry only keeps one put here anyway from moving the fingerprint.
 .claude/worktrees/
 .claude/settings.local.json
+# /flow-init case A hands its answers to the run in the new checkout.
+.claude/flow-init.answers.md
